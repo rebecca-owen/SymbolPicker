@@ -10,13 +10,13 @@ let package = Package(
         .iOS(.v14),
         .macOS(.v12),
         .tvOS(.v14),
-        .watchOS(.v8),
+        .watchOS(.v8)
     ],
     products: [
         .library(
             name: "SymbolPicker",
             targets: ["SymbolPicker"]
-        ),
+        )
     ],
     dependencies: [
     ],
@@ -26,12 +26,12 @@ let package = Package(
             dependencies: [],
             path: "Sources/SymbolPicker",
             resources: [
-                .process("Resources"),
+                .process("Resources")
             ]
         ),
         .testTarget(
             name: "SymbolPickerTests",
             dependencies: ["SymbolPicker"]
-        ),
+        )
     ]
 )
