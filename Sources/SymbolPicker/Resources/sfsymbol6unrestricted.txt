@@ -355,7 +355,6 @@ app.dashed
 app.fill
 app.gift
 app.gift.fill
-apple.logocloud.moon.circle
 apple.terminal.on.rectangle
 apple.terminal.on.rectangle.fill
 appwindow.swipe.rectangle
@@ -1680,6 +1679,7 @@ cloud.moon.bolt
 cloud.moon.bolt.circle
 cloud.moon.bolt.circle.fill
 cloud.moon.bolt.fill
+cloud.moon.circle
 cloud.moon.circle.fill
 cloud.moon.fill
 cloud.moon.rain
