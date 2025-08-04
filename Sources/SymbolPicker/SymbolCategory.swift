@@ -8,8 +8,8 @@
 import Foundation
 
 /// Extension to provide all cases of `SymbolCategory`.
-extension [SymbolCategory] {
-    public static let all = SymbolCategory.allCases
+public extension [SymbolCategory] {
+    static let all = SymbolCategory.allCases
 }
 
 /// `SymbolCategory` is an enum that represents the categories of SF Symbols.
@@ -45,7 +45,7 @@ public enum SymbolCategory: String, CaseIterable, Sendable {
     case arrows
     case indices
     case math
-    
+
     var name: String {
         switch self {
 //        case .all:
@@ -112,7 +112,7 @@ public enum SymbolCategory: String, CaseIterable, Sendable {
             "Math"
         }
     }
-    
+
     var systemImage: String {
         switch self {
 //        case .all:

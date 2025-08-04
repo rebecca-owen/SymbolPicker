@@ -10,7 +10,6 @@ import Foundation
 /// Simple singleton class for providing symbols list per platform availability.
 @MainActor
 public class Symbols: Sendable {
-
     /// Singleton instance.
     public static let shared = Symbols()
 
@@ -41,15 +40,16 @@ public class Symbols: Sendable {
         } else {
             "sfsymbol4"
         }
-        self.allSymbols = Self.fetchSymbolsWithCategories(fileName: filename)
-        self.symbols = self.allSymbols
+        allSymbols = Self.fetchSymbolsWithCategories(fileName: filename)
+        symbols = allSymbols
     }
 
     private static func fetchSymbols(fileName: String) -> [String] {
         guard let path = Bundle.module.path(forResource: fileName, ofType: "txt"),
-              let content = try? String(contentsOfFile: path) else {
+              let content = try? String(contentsOfFile: path)
+        else {
             #if DEBUG
-            assertionFailure("[SymbolPicker] Failed to load bundle resource file.")
+                assertionFailure("[SymbolPicker] Failed to load bundle resource file.")
             #endif
             return []
         }
@@ -57,12 +57,13 @@ public class Symbols: Sendable {
             .split(separator: "\n")
             .map { String($0) }
     }
-    
+
     private static func fetchSymbolsWithCategories(fileName: String) -> [Symbol] {
         guard let path = Bundle.module.path(forResource: fileName, ofType: "txt"),
-              let content = try? String(contentsOfFile: path) else {
+              let content = try? String(contentsOfFile: path)
+        else {
             #if DEBUG
-            assertionFailure("[SymbolPicker] Failed to load bundle resource file.")
+                assertionFailure("[SymbolPicker] Failed to load bundle resource file.")
             #endif
             return []
         }
@@ -71,4 +72,3 @@ public class Symbols: Sendable {
             .map { Symbol(String($0)) }
     }
 }
-

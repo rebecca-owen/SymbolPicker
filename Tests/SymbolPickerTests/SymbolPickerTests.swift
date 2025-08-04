@@ -7,15 +7,14 @@
 
 import Testing
 #if canImport(UIKit)
-import UIKit
+    import UIKit
 #elseif canImport(AppKit)
-import AppKit
+    import AppKit
 #endif
 @testable import SymbolPicker
 
 @MainActor
 struct SymbolPickerTests {
-
     init() {
         Symbols.shared.filter = nil
     }
@@ -23,7 +22,7 @@ struct SymbolPickerTests {
     @Test("Test initialization of symbols")
     func testSymbols() {
         let allSymbols = Symbols.shared.symbols
-        allSymbols.forEach { symbol in
+        for symbol in allSymbols {
             assertImage(systemName: symbol.name)
         }
     }
@@ -32,26 +31,25 @@ struct SymbolPickerTests {
     func testFilter() {
         Symbols.shared.filter = { $0.contains(".circle") }
         let symbols = Symbols.shared.symbols
-        symbols.forEach {
-            #expect($0.name.contains(".circle"))
+        for symbol in symbols {
+            #expect(symbol.name.contains(".circle"))
         }
     }
-    
+
     @Test("Test categories of symbols")
     func testCategories() {
         let categories: [SymbolCategory] = [.maps]
         let symbols = Symbols.shared.symbols.filter { !$0.categories.isDisjoint(with: categories) }
-        
+
         assert(symbols.contains { $0.name.contains("figure.walk") })
         assert(!symbols.contains { $0.name.contains("pencil") })
     }
 
     private func assertImage(systemName: String) {
         #if canImport(UIKit)
-        #expect(UIImage(systemName: systemName) != nil)
+            #expect(UIImage(systemName: systemName) != nil)
         #elseif canImport(AppKit)
-        #expect(NSImage(systemSymbolName: systemName, accessibilityDescription: nil) != nil)
+            #expect(NSImage(systemSymbolName: systemName, accessibilityDescription: nil) != nil)
         #endif
     }
-
 }

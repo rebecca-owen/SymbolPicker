@@ -17,7 +17,8 @@ let package = Package(
     products: [
         .library(
             name: "SymbolPicker",
-            targets: ["SymbolPicker"]),
+            targets: ["SymbolPicker"]
+        ),
     ],
     dependencies: [
     ],
@@ -29,13 +30,11 @@ let package = Package(
             path: "Sources/SymbolPicker",
             resources: [
                 .process("Resources"),
-            ]),
-                .process("Resources")
             ]
         ),
         .testTarget(
             name: "SymbolPickerTests",
             dependencies: ["SymbolPicker"]
-        )
+        ),
     ]
 )
