@@ -117,26 +117,72 @@ public struct SymbolPicker: View {
     }
 
     private static var backgroundColor: Color {
-#if os(iOS)
-        return Color(UIColor.systemGroupedBackground)
-#else
+        #if os(iOS)
+        return Color(UIColor.secondarySystemBackground)
+        #else
         return .clear
 #endif
     }
 
+    private static var deleteButtonTextVerticalPadding: CGFloat {
+        #if os(iOS)
+        return 12.0
+        #else
+        return 8.0
+        #endif
+    }
+
     // MARK: - Properties
-
-    @Binding public var symbol: String
+    
+    @Binding public var symbol: String?
     @State private var searchText = ""
-    @Environment(\.presentationMode) private var presentationMode
+    @Environment(\.dismiss) private var dismiss
 
-    // MARK: - Public Init
+    private let nullable: Bool
+    private let categories: [SymbolCategory]
 
-    /// Initializes `SymbolPicker` with a string binding that captures the raw value of
-    /// user-selected SFSymbol.
-    /// - Parameter symbol: String binding to store user selection.
-    public init(symbol: Binding<String>) {
-        _symbol = symbol
+    // MARK: - Init
+
+    /// Initializes `SymbolPicker` with a string binding to the selected symbol name and default categories to display.
+    ///
+    /// - Parameters:
+    ///   - symbol: A binding to a `String` that represents the name of the selected symbol.
+    ///     When a symbol is picked, this binding is updated with the symbol's name.
+    ///   - categories: An array of `SymbolCategory` that represents the categories of the symbols to be displayed.
+    ///     Default is `.all`.
+    public init(symbol: Binding<String>, categories: [SymbolCategory] = .all) {
+        self.init(
+            symbol: Binding {
+                return symbol.wrappedValue
+            } set: { newValue in
+                /// As the `nullable` is set to `false`, this can not be `nil`
+                if let newValue {
+                    symbol.wrappedValue = newValue
+                }
+            },
+            nullable: false,
+            categories: categories
+        )
+    }
+
+    /// Initializes `SymbolPicker` with a nullable string binding to the selected symbol name and default categories to display.
+    ///
+    /// - Parameters:
+    ///   - symbol: A binding to a `String` that represents the name of the selected symbol.
+    ///     When a symbol is picked, this binding is updated with the symbol's name. When no symbol
+    ///     is picked, the value will be `nil`.
+    ///   - categories: An array of `SymbolCategory` that represents the categories of the symbols to be displayed.
+    ///     Default is `.all`.
+    public init(symbol: Binding<String?>, categories: [SymbolCategory] = .all) {
+        self.init(symbol: symbol, nullable: true, categories: categories)
+    }
+
+    /// Private designated initializer.
+    private init(symbol: Binding<String?>,
+                 nullable: Bool, categories: [SymbolCategory] ) {
+        self._symbol = symbol
+        self.nullable = nullable
+        self.categories = categories
     }
 
     // MARK: - View Components
@@ -183,7 +229,7 @@ public struct SymbolPicker: View {
                     .disableAutocorrection(true)
 
                 Button {
-                    presentationMode.wrappedValue.dismiss()
+                    dismiss()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .resizable()
@@ -196,6 +242,16 @@ public struct SymbolPicker: View {
             Divider()
 
             symbolGrid
+
+            if canDeleteIcon {
+                Divider()
+                HStack {
+                    Spacer()
+                    deleteButton
+                        .padding(.horizontal)
+                        .padding(.vertical, 8.0)
+                }
+            }
         }
 #else
         symbolGrid
@@ -249,13 +305,16 @@ public struct SymbolPicker: View {
                     .padding(.leading)
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.gridDimension, maximum: Self.gridDimension))]) {
-                ForEach(Self.symbols.filter { searchText.isEmpty ? true : $0.localizedCaseInsensitiveContains(searchText) }, id: \.self) { thisSymbol in
+                ForEach(symbols.filter {
+                    (categories == .all || !$0.categories.isDisjoint(with: categories))
+                    && (searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText))
+                }) { thisSymbol in
                     Button {
-                        symbol = thisSymbol
-                        presentationMode.wrappedValue.dismiss()
+                        symbol = thisSymbol.name
+                        dismiss()
                     } label: {
-                        if thisSymbol == symbol {
-                            Image(systemName: thisSymbol)
+                        if thisSymbol.name == symbol {
+                            Image(systemName: thisSymbol.name)
                                 .font(.system(size: Self.symbolSize))
 #if os(tvOS)
                                 .frame(minWidth: Self.gridDimension, minHeight: Self.gridDimension)
@@ -263,10 +322,14 @@ public struct SymbolPicker: View {
                                 .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
 #endif
                                 .background(Self.selectedItemBackgroundColor)
+                                #if os(visionOS)
+                                .clipShape(Circle())
+                                #else
                                 .cornerRadius(Self.symbolCornerRadius)
+                                #endif
                                 .foregroundColor(.white)
                         } else {
-                            Image(systemName: thisSymbol)
+                            Image(systemName: thisSymbol.name)
                                 .font(.system(size: Self.symbolSize))
                                 .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
                                 .background(Self.unselectedItemBackgroundColor)
@@ -281,6 +344,31 @@ public struct SymbolPicker: View {
                 }
             }
             .padding(.horizontal)
+
+            #if os(iOS) || os(visionOS)
+            /// Avoid last row being hidden.
+            if canDeleteIcon {
+                Spacer()
+                    .frame(height: Self.gridDimension * 2)
+            }
+            #endif
+        }
+    }
+
+    private var deleteButton: some View {
+        Button(role: .destructive) {
+            symbol = nil
+            dismiss()
+        } label: {
+            Label(LocalizedString("remove_symbol"), systemImage: "trash")
+                #if !os(tvOS) && !os(macOS)
+                .frame(maxWidth: .infinity)
+                #endif
+                #if !os(watchOS)
+                .padding(.vertical, Self.deleteButtonTextVerticalPadding)
+                #endif
+                .background(Self.unselectedItemBackgroundColor)
+                .clipShape(RoundedRectangle(cornerRadius: 12.0, style: .continuous))
         }
     }
 
@@ -292,6 +380,18 @@ public struct SymbolPicker: View {
                 Self.backgroundColor.edgesIgnoringSafeArea(.all)
 #endif
                 searchableSymbolGrid
+
+                #if os(iOS) || os(visionOS)
+                if canDeleteIcon {
+                    VStack {
+                        Spacer()
+
+                        deleteButton
+                            .padding()
+                            .background(.regularMaterial)
+                    }
+                }
+                #endif
             }
 #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -300,8 +400,10 @@ public struct SymbolPicker: View {
             /// tvOS can use back button on remote
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(LocalizedString("cancel")) {
-                        presentationMode.wrappedValue.dismiss()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text(LocalizedString("cancel"))
                     }
                 }
             }
@@ -310,25 +412,58 @@ public struct SymbolPicker: View {
         .navigationViewStyle(.stack)
 #else
         searchableSymbolGrid
-            .frame(width: 540, height: 320, alignment: .center)
+            .frame(width: 540, height: 340, alignment: .center)
             .background(.regularMaterial)
 #endif
     }
 
+    private var canDeleteIcon: Bool {
+        nullable && symbol != nil
+    }
+
+    private var symbols: [Symbol] {
+        Symbols.shared.symbols
+    }
+
 }
 
-private func LocalizedString(_ key: String) -> String {
-    NSLocalizedString(key, bundle: .module, comment: "")
+private func LocalizedString(_ key: String.LocalizationValue) -> String {
+    String(localized: key, bundle: .module)
 }
 
-struct SymbolPicker_Previews: PreviewProvider {
-    @State static var symbol: String = "square.and.arrow.up"
+// MARK: - Debug
 
-    static var previews: some View {
-        Group {
-            SymbolPicker(symbol: Self.$symbol)
-            SymbolPicker(symbol: Self.$symbol)
-                .preferredColorScheme(.dark)
+#if DEBUG
+#Preview("Normal") {
+    struct Preview: View {
+        @State private var symbol: String? = "square.and.arrow.up"
+        var body: some View {
+            SymbolPicker(symbol: $symbol)
         }
     }
+    return Preview()
 }
+
+#Preview("Filter Example") {
+    Symbols.shared.filter = { $0.contains(".circle") }
+    
+    struct Preview: View {
+        @State private var symbol: String? = "square.and.arrow.up.circle.fill"
+        var body: some View {
+            SymbolPicker(symbol: $symbol)
+        }
+    }
+    return Preview()
+}
+
+#Preview("Categories Example") {
+    struct Preview: View {
+        @State private var symbol: String = ""
+        var body: some View {
+            SymbolPicker(symbol: $symbol, categories: [.maps, .math])
+        }
+    }
+    return Preview()
+}
+
+#endif

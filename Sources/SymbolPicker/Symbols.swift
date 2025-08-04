@@ -8,13 +8,28 @@
 import Foundation
 
 /// Simple singleton class for providing symbols list per platform availability.
-class Symbols {
+@MainActor
+public class Symbols: Sendable {
 
     /// Singleton instance.
-    static let shared = Symbols()
+    public static let shared = Symbols()
+
+    /// Filter closure that checks each symbol name string should be included.
+    public var filter: ((String) -> Bool)? {
+        didSet {
+            if let filter {
+                symbols = allSymbols.filter { filter($0.name) }
+            } else {
+                symbols = allSymbols
+            }
+        }
+    }
+
+    /// Array of the symbol name strings to be displayed.
+    private(set) var symbols: [Symbol]
 
     /// Array of all available symbol name strings.
-    let allSymbols: [String]
+    private let allSymbols: [Symbol]
 
     private init() {
         if #available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
@@ -24,8 +39,10 @@ class Symbols {
         } else if #available(iOS 16.0, macOS 13.0, tvOS 16.0, watchOS 9.0, *) {
             self.allSymbols = Self.fetchSymbols(fileName: "sfsymbol4unrestricted")
         } else {
-            self.allSymbols = Self.fetchSymbols(fileName: "sfsymbol")
+            "sfsymbol4"
         }
+        self.allSymbols = Self.fetchSymbolsWithCategories(fileName: filename)
+        self.symbols = self.allSymbols
     }
 
     private static func fetchSymbols(fileName: String) -> [String] {
@@ -40,5 +57,18 @@ class Symbols {
             .split(separator: "\n")
             .map { String($0) }
     }
-
+    
+    private static func fetchSymbolsWithCategories(fileName: String) -> [Symbol] {
+        guard let path = Bundle.module.path(forResource: fileName, ofType: "txt"),
+              let content = try? String(contentsOfFile: path) else {
+            #if DEBUG
+            assertionFailure("[SymbolPicker] Failed to load bundle resource file.")
+            #endif
+            return []
+        }
+        return content
+            .split(separator: "\n")
+            .map { Symbol(String($0)) }
+    }
 }
+
