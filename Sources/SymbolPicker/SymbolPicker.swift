@@ -169,7 +169,7 @@ public struct SymbolPicker: View {
                 symbolGrid
             }
 
-        /// `searchable` is crashing on tvOS 16. What the hell aPPLE?
+        /// `searchable` is crashing on tvOS 16
         ///
         /// symbolGrid
         ///     .searchable(text: $searchText, placement: .automatic)
