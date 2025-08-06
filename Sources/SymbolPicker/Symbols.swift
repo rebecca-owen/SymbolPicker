@@ -9,7 +9,6 @@ import Foundation
 
 /// Simple singleton class for providing symbols list per platform availability.
 class Symbols {
-
     /// Singleton instance.
     static let shared = Symbols()
 
@@ -17,22 +16,25 @@ class Symbols {
     let allSymbols: [String]
 
     private init() {
-        if #available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
+        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *) {
+            self.allSymbols = Self.fetchSymbols(fileName: "sfsymbol7unrestricted")
+        } else if #available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
             self.allSymbols = Self.fetchSymbols(fileName: "sfsymbol6unrestricted")
         } else if #available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, visionOS 1.0, *) {
             self.allSymbols = Self.fetchSymbols(fileName: "sfsymbol5unrestricted")
         } else if #available(iOS 16.0, macOS 13.0, tvOS 16.0, watchOS 9.0, *) {
             self.allSymbols = Self.fetchSymbols(fileName: "sfsymbol4unrestricted")
         } else {
-            self.allSymbols = Self.fetchSymbols(fileName: "sfsymbol")
+            allSymbols = Self.fetchSymbols(fileName: "sfsymbol")
         }
     }
 
     private static func fetchSymbols(fileName: String) -> [String] {
         guard let path = Bundle.module.path(forResource: fileName, ofType: "txt"),
-              let content = try? String(contentsOfFile: path) else {
+              let content = try? String(contentsOfFile: path)
+        else {
             #if DEBUG
-            assertionFailure("[SymbolPicker] Failed to load bundle resource file.")
+                assertionFailure("[SymbolPicker] Failed to load bundle resource file.")
             #endif
             return []
         }
@@ -40,5 +42,4 @@ class Symbols {
             .split(separator: "\n")
             .map { String($0) }
     }
-
 }
