@@ -15,7 +15,7 @@ public struct SymbolPicker: View {
         Symbols.shared.allSymbols
     }
 
-    private static let suggestedSymbols: [String] = [
+    private static let commonSymbols: [String] = [
         "figure.run",
         "figure.walk.motion",
         "fork.knife",
@@ -125,6 +125,8 @@ public struct SymbolPicker: View {
 
     // MARK: - Properties
 
+    private let suggestedSymbols: [String]?
+
     @Binding public var symbol: String
     @State private var searchText = ""
     @Environment(\.presentationMode) private var presentationMode
@@ -133,9 +135,12 @@ public struct SymbolPicker: View {
 
     /// Initializes `SymbolPicker` with a string binding that captures the raw value of
     /// user-selected SFSymbol.
-    /// - Parameter symbol: String binding to store user selection.
-    public init(symbol: Binding<String>) {
+    /// - Parameters:
+    ///   - symbol: String binding to store user selection.
+    ///   - suggestedSymbols: Optional array of symbol names to feature at the top of the list.
+    public init(symbol: Binding<String>, suggestedSymbols: [String]? = nil) {
         _symbol = symbol
+        self.suggestedSymbols = suggestedSymbols
     }
 
     // MARK: - View Components
@@ -205,48 +210,58 @@ public struct SymbolPicker: View {
     private var symbolGrid: some View {
         ScrollView {
             if searchText.isEmpty {
-                Text("Suggested")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundColor(.secondary)
-                    .padding(.leading)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.gridDimension, maximum: Self.gridDimension))]) {
-                    ForEach(Self.suggestedSymbols, id: \.self) { thisSymbol in
-                        Button {
-                            symbol = thisSymbol
-                            presentationMode.wrappedValue.dismiss()
-                        } label: {
-                            if thisSymbol == symbol {
-                                Image(systemName: thisSymbol)
-                                    .font(.system(size: Self.symbolSize))
-                                #if os(tvOS)
-                                    .frame(minWidth: Self.gridDimension, minHeight: Self.gridDimension)
-                                #else
-                                    .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
-                                #endif
-                                    .background(Self.selectedItemBackgroundColor)
-                                    .cornerRadius(Self.symbolCornerRadius)
-                                    .foregroundColor(.white)
-                            } else {
-                                Image(systemName: thisSymbol)
-                                    .font(.system(size: Self.symbolSize))
-                                    .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
-                                    .background(Self.unselectedItemBackgroundColor)
-                                    .cornerRadius(Self.symbolCornerRadius)
-                                    .foregroundColor(.primary)
+                // Combine suggested and common, preserving order and removing duplicates
+                let featured: [String] = {
+                    var seen = Set<String>()
+                    let merged = (suggestedSymbols ?? []) + Self.commonSymbols
+                    return merged.filter { seen.insert($0).inserted }
+                }()
+
+                if !featured.isEmpty {
+                    Text("Suggested")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .foregroundColor(.secondary)
+                        .padding(.leading)
+
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.gridDimension, maximum: Self.gridDimension))]) {
+                        ForEach(featured, id: \.self) { thisSymbol in
+                            Button {
+                                symbol = thisSymbol
+                                presentationMode.wrappedValue.dismiss()
+                            } label: {
+                                if thisSymbol == symbol {
+                                    Image(systemName: thisSymbol)
+                                        .font(.system(size: Self.symbolSize))
+                                    #if os(tvOS)
+                                        .frame(minWidth: Self.gridDimension, minHeight: Self.gridDimension)
+                                    #else
+                                        .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
+                                    #endif
+                                        .background(Self.selectedItemBackgroundColor)
+                                        .cornerRadius(Self.symbolCornerRadius)
+                                        .foregroundColor(.white)
+                                } else {
+                                    Image(systemName: thisSymbol)
+                                        .font(.system(size: Self.symbolSize))
+                                        .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
+                                        .background(Self.unselectedItemBackgroundColor)
+                                        .cornerRadius(Self.symbolCornerRadius)
+                                        .foregroundColor(.primary)
+                                }
                             }
+                            .buttonStyle(.plain)
+                            #if os(iOS)
+                                .hoverEffect(.lift)
+                            #endif
                         }
-                        .buttonStyle(.plain)
-                        #if os(iOS)
-                            .hoverEffect(.lift)
-                        #endif
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
-                Text("All Symbols")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundColor(.secondary)
-                    .padding(.leading)
             }
+            Text("All Symbols")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundColor(.secondary)
+                .padding(.leading)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.gridDimension, maximum: Self.gridDimension))]) {
                 ForEach(Self.symbols.filter { searchText.isEmpty ? true : $0.localizedCaseInsensitiveContains(searchText) }, id: \.self) { thisSymbol in
                     Button {
@@ -324,7 +339,7 @@ struct SymbolPicker_Previews: PreviewProvider {
 
     static var previews: some View {
         Group {
-            SymbolPicker(symbol: Self.$symbol)
+            SymbolPicker(symbol: Self.$symbol, suggestedSymbols: ["book", "flame.fill", "cup.and.saucer.fill"])
             SymbolPicker(symbol: Self.$symbol)
                 .preferredColorScheme(.dark)
         }
