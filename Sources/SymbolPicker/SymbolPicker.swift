@@ -7,6 +7,33 @@
 
 import SwiftUI
 
+// MARK: - Hierarchical Image Utility
+
+extension Image {
+    /// Creates a system image with hierarchical rendering applied automatically,
+    /// except for symbols that don't support hierarchical rendering
+    /// - Parameter systemName: The SF Symbol name
+    /// - Returns: Image with hierarchical rendering applied where supported
+    static func systemHierarchical(_ systemName: String) -> Image {
+        let symbolsWithoutHierarchicalSupport: Set<String> = [
+            "shippingbox.and.arrow.backward.fill",
+        ]
+
+        let image = Image(systemName: systemName)
+
+        if symbolsWithoutHierarchicalSupport.contains(systemName) {
+            return image
+        } else {
+            if #available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *) {
+                return image.symbolRenderingMode(.hierarchical)
+            } else {
+                // Fallback on earlier versions: return the plain image
+                return image
+            }
+        }
+    }
+}
+
 /// A simple and cross-platform SFSymbol picker for SwiftUI.
 public struct SymbolPicker: View {
     // MARK: - Static consts
@@ -230,7 +257,7 @@ public struct SymbolPicker: View {
                                 presentationMode.wrappedValue.dismiss()
                             } label: {
                                 if thisSymbol == symbol {
-                                    Image(systemName: thisSymbol)
+                                    Image.systemHierarchical(thisSymbol)
                                         .font(.system(size: Self.symbolSize))
                                     #if os(tvOS)
                                         .frame(minWidth: Self.gridDimension, minHeight: Self.gridDimension)
@@ -241,7 +268,7 @@ public struct SymbolPicker: View {
                                         .cornerRadius(Self.symbolCornerRadius)
                                         .foregroundColor(.white)
                                 } else {
-                                    Image(systemName: thisSymbol)
+                                    Image.systemHierarchical(thisSymbol)
                                         .font(.system(size: Self.symbolSize))
                                         .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
                                         .background(Self.unselectedItemBackgroundColor)
@@ -269,7 +296,7 @@ public struct SymbolPicker: View {
                         presentationMode.wrappedValue.dismiss()
                     } label: {
                         if thisSymbol == symbol {
-                            Image(systemName: thisSymbol)
+                            Image.systemHierarchical(thisSymbol)
                                 .font(.system(size: Self.symbolSize))
                             #if os(tvOS)
                                 .frame(minWidth: Self.gridDimension, minHeight: Self.gridDimension)
@@ -280,7 +307,7 @@ public struct SymbolPicker: View {
                                 .cornerRadius(Self.symbolCornerRadius)
                                 .foregroundColor(.white)
                         } else {
-                            Image(systemName: thisSymbol)
+                            Image.systemHierarchical(thisSymbol)
                                 .font(.system(size: Self.symbolSize))
                                 .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
                                 .background(Self.unselectedItemBackgroundColor)
