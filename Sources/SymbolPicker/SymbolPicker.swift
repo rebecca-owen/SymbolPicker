@@ -161,6 +161,7 @@ public struct SymbolPicker: View {
     private let suggestedSymbols: [String]?
     private let enableEmojiPicker: Bool
     private let enableIntelligentSuggestions: Bool
+    private let contextString: String?
 
     @Binding public var symbol: String
     @State private var searchText = ""
@@ -176,16 +177,19 @@ public struct SymbolPicker: View {
     /// - Parameters:
     ///   - symbol: String binding to store user selection.
     ///   - suggestedSymbols: Optional array of symbol names to feature at the top of the list.
+    ///   - contextString: Optional context string to generate AI suggestions before user searches (e.g., "fitness", "food", "travel").
     ///   - enableEmojiPicker: Whether to enable the emoji picker tab (default: true).
     ///   - enableIntelligentSuggestions: Whether to enable AI-powered suggestions based on search (default: true, requires iOS 26+).
     public init(
         symbol: Binding<String>,
         suggestedSymbols: [String]? = nil,
+        contextString: String? = nil,
         enableEmojiPicker: Bool = true,
         enableIntelligentSuggestions: Bool = true
     ) {
         _symbol = symbol
         self.suggestedSymbols = suggestedSymbols
+        self.contextString = contextString
         self.enableEmojiPicker = enableEmojiPicker
         self.enableIntelligentSuggestions = enableIntelligentSuggestions
     }
@@ -319,9 +323,9 @@ public struct SymbolPicker: View {
 
     private var symbolGrid: some View {
         ScrollView {
-            // Intelligent suggestions from AI (if enabled and search is active)
-            if enableIntelligentSuggestions && !searchText.isEmpty && !intelligentSymbolSuggestions.isEmpty {
-                Text("AI Suggestions")
+            // Intelligent suggestions from AI (if enabled and search is active OR context is provided)
+            if enableIntelligentSuggestions && !intelligentSymbolSuggestions.isEmpty {
+                Text(searchText.isEmpty ? "Suggested for You" : "AI Suggestions")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .foregroundColor(.secondary)
                     .padding(.leading)
@@ -369,10 +373,23 @@ public struct SymbolPicker: View {
             }
             .padding(.horizontal)
         }
+        .onAppear {
+            // Load context-based suggestions when view appears
+            if enableIntelligentSuggestions, let context = contextString, !context.isEmpty {
+                Task {
+                    intelligentSymbolSuggestions = await IntelligentSuggestions.shared.suggestSymbols(for: context)
+                }
+            }
+        }
         .onChange(of: searchText) { newValue in
             if enableIntelligentSuggestions && !newValue.isEmpty {
                 Task {
                     intelligentSymbolSuggestions = await IntelligentSuggestions.shared.suggestSymbols(for: newValue)
+                }
+            } else if enableIntelligentSuggestions, let context = contextString, !context.isEmpty {
+                // Restore context-based suggestions when search is cleared
+                Task {
+                    intelligentSymbolSuggestions = await IntelligentSuggestions.shared.suggestSymbols(for: context)
                 }
             } else {
                 intelligentSymbolSuggestions = []
@@ -413,9 +430,9 @@ public struct SymbolPicker: View {
 
     private var emojiGrid: some View {
         ScrollView {
-            // Intelligent suggestions from AI (if enabled and search is active)
-            if enableIntelligentSuggestions && !searchText.isEmpty && !intelligentEmojiSuggestions.isEmpty {
-                Text("AI Suggestions")
+            // Intelligent suggestions from AI (if enabled and search is active OR context is provided)
+            if enableIntelligentSuggestions && !intelligentEmojiSuggestions.isEmpty {
+                Text(searchText.isEmpty ? "Suggested for You" : "AI Suggestions")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .foregroundColor(.secondary)
                     .padding(.leading)
@@ -456,10 +473,23 @@ public struct SymbolPicker: View {
                 }
             }
         }
+        .onAppear {
+            // Load context-based suggestions when view appears
+            if enableIntelligentSuggestions, let context = contextString, !context.isEmpty {
+                Task {
+                    intelligentEmojiSuggestions = await IntelligentSuggestions.shared.suggestEmoji(for: context)
+                }
+            }
+        }
         .onChange(of: searchText) { newValue in
             if enableIntelligentSuggestions && !newValue.isEmpty {
                 Task {
                     intelligentEmojiSuggestions = await IntelligentSuggestions.shared.suggestEmoji(for: newValue)
+                }
+            } else if enableIntelligentSuggestions, let context = contextString, !context.isEmpty {
+                // Restore context-based suggestions when search is cleared
+                Task {
+                    intelligentEmojiSuggestions = await IntelligentSuggestions.shared.suggestEmoji(for: context)
                 }
             } else {
                 intelligentEmojiSuggestions = []

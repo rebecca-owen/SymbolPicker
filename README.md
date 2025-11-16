@@ -84,6 +84,22 @@ SymbolPicker(
 )
 ```
 
+**With Context-Based AI Suggestions:**
+
+```swift
+// AI will suggest fitness-related symbols/emoji even before user searches
+SymbolPicker(
+    symbol: $icon,
+    contextString: "fitness"
+)
+
+// Or for a food-related feature
+SymbolPicker(
+    symbol: $icon,
+    contextString: "food and drink"
+)
+```
+
 **Symbols Only (Disable Emoji):**
 
 ```swift
@@ -108,6 +124,7 @@ SymbolPicker(
 SymbolPicker(
     symbol: $icon,
     suggestedSymbols: ["camera", "photo", "video"],
+    contextString: "photography",
     enableEmojiPicker: true,
     enableIntelligentSuggestions: true
 )

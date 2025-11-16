@@ -109,10 +109,12 @@ private func suggestSymbolsWithAppleIntelligence(for text: String, maxSuggestion
    - Clean visual separation between content types
    - Preserves search text when switching between types
 
-2. **AI Suggestions Section** - Displayed prominently when search is active
-   - Clearly labeled "AI Suggestions" section
+2. **AI Suggestions Section** - Displayed prominently based on context or search
+   - Shows "Suggested for You" when context string is provided (even before search)
+   - Shows "AI Suggestions" when user actively searches
    - Appears above regular content
    - Real-time updates as user types
+   - Restores context suggestions when search is cleared
 
 3. **Better Organization**:
    - **Symbols**: Suggested → All Symbols
@@ -157,6 +159,7 @@ public enum PickerType: String, CaseIterable {
 public init(
     symbol: Binding<String>,
     suggestedSymbols: [String]? = nil,
+    contextString: String? = nil,
     enableEmojiPicker: Bool = true,
     enableIntelligentSuggestions: Bool = true
 )
@@ -171,6 +174,12 @@ SymbolPicker(symbol: $icon)
 // Symbols only (classic mode)
 SymbolPicker(symbol: $icon, enableEmojiPicker: false)
 
+// With context-based AI suggestions (shown before user searches)
+SymbolPicker(
+    symbol: $icon,
+    contextString: "fitness"
+)
+
 // With custom suggestions and AI disabled
 SymbolPicker(
     symbol: $icon,
@@ -182,6 +191,7 @@ SymbolPicker(
 SymbolPicker(
     symbol: $icon,
     suggestedSymbols: ["camera", "photo"],
+    contextString: "photography",
     enableEmojiPicker: true,
     enableIntelligentSuggestions: true
 )
