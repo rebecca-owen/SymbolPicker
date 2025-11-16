@@ -34,7 +34,13 @@ extension Image {
     }
 }
 
-/// A simple and cross-platform SFSymbol picker for SwiftUI.
+/// Represents the type of item being picked (symbol or emoji).
+public enum PickerType: String, CaseIterable {
+    case symbols = "Symbols"
+    case emoji = "Emoji"
+}
+
+/// A simple and cross-platform SFSymbol and Emoji picker for SwiftUI.
 public struct SymbolPicker: View {
     // MARK: - Static consts
 
@@ -153,31 +159,84 @@ public struct SymbolPicker: View {
     // MARK: - Properties
 
     private let suggestedSymbols: [String]?
+    private let enableEmojiPicker: Bool
+    private let enableIntelligentSuggestions: Bool
 
     @Binding public var symbol: String
     @State private var searchText = ""
+    @State private var selectedPickerType: PickerType = .symbols
+    @State private var intelligentSymbolSuggestions: [String] = []
+    @State private var intelligentEmojiSuggestions: [String] = []
     @Environment(\.presentationMode) private var presentationMode
 
     // MARK: - Public Init
 
     /// Initializes `SymbolPicker` with a string binding that captures the raw value of
-    /// user-selected SFSymbol.
+    /// user-selected SFSymbol or emoji.
     /// - Parameters:
     ///   - symbol: String binding to store user selection.
     ///   - suggestedSymbols: Optional array of symbol names to feature at the top of the list.
-    public init(symbol: Binding<String>, suggestedSymbols: [String]? = nil) {
+    ///   - enableEmojiPicker: Whether to enable the emoji picker tab (default: true).
+    ///   - enableIntelligentSuggestions: Whether to enable AI-powered suggestions based on search (default: true, requires iOS 26+).
+    public init(
+        symbol: Binding<String>,
+        suggestedSymbols: [String]? = nil,
+        enableEmojiPicker: Bool = true,
+        enableIntelligentSuggestions: Bool = true
+    ) {
         _symbol = symbol
         self.suggestedSymbols = suggestedSymbols
+        self.enableEmojiPicker = enableEmojiPicker
+        self.enableIntelligentSuggestions = enableIntelligentSuggestions
     }
 
     // MARK: - View Components
 
     @ViewBuilder
+    private var pickerView: some View {
+        if enableEmojiPicker {
+            #if os(iOS)
+            if #available(iOS 13.0, *) {
+                Picker("Type", selection: $selectedPickerType) {
+                    ForEach(PickerType.allCases, id: \.self) { type in
+                        Text(type.rawValue).tag(type)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding(.horizontal)
+            }
+            #elseif os(macOS)
+            Picker("Type", selection: $selectedPickerType) {
+                ForEach(PickerType.allCases, id: \.self) { type in
+                    Text(type.rawValue).tag(type)
+                }
+            }
+            .pickerStyle(SegmentedPickerStyle())
+            .padding(.horizontal)
+            #else
+            Picker("Type", selection: $selectedPickerType) {
+                ForEach(PickerType.allCases, id: \.self) { type in
+                    Text(type.rawValue).tag(type)
+                }
+            }
+            .padding(.horizontal)
+            #endif
+        }
+    }
+
+    @ViewBuilder
     private var searchableSymbolGrid: some View {
         #if os(iOS)
             if #available(iOS 15.0, *) {
-                symbolGrid
-                    .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
+                VStack(spacing: 8) {
+                    pickerView
+                    if selectedPickerType == .symbols {
+                        symbolGrid
+                    } else {
+                        emojiGrid
+                    }
+                }
+                .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
             } else {
                 VStack {
                     TextField(LocalizedString("search_placeholder"), text: $searchText)
@@ -188,9 +247,14 @@ public struct SymbolPicker: View {
                         .padding(.horizontal, 16.0)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
-                    symbolGrid
-                        .padding(.top)
+                    pickerView
+                    if selectedPickerType == .symbols {
+                        symbolGrid
+                    } else {
+                        emojiGrid
+                    }
                 }
+                .padding(.top)
             }
         #elseif os(tvOS)
             VStack {
@@ -198,7 +262,12 @@ public struct SymbolPicker: View {
                     .padding(.horizontal, 8)
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
-                symbolGrid
+                pickerView
+                if selectedPickerType == .symbols {
+                    symbolGrid
+                } else {
+                    emojiGrid
+                }
             }
 
         /// `searchable` is crashing on tvOS 16
@@ -226,16 +295,46 @@ public struct SymbolPicker: View {
 
                 Divider()
 
-                symbolGrid
+                pickerView
+                    .padding(.top, 8)
+
+                if selectedPickerType == .symbols {
+                    symbolGrid
+                } else {
+                    emojiGrid
+                }
             }
         #else
-            symbolGrid
-                .searchable(text: $searchText, placement: .automatic)
+            VStack(spacing: 8) {
+                pickerView
+                if selectedPickerType == .symbols {
+                    symbolGrid
+                } else {
+                    emojiGrid
+                }
+            }
+            .searchable(text: $searchText, placement: .automatic)
         #endif
     }
 
     private var symbolGrid: some View {
         ScrollView {
+            // Intelligent suggestions from AI (if enabled and search is active)
+            if enableIntelligentSuggestions && !searchText.isEmpty && !intelligentSymbolSuggestions.isEmpty {
+                Text("AI Suggestions")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundColor(.secondary)
+                    .padding(.leading)
+                    .font(.headline)
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.gridDimension, maximum: Self.gridDimension))]) {
+                    ForEach(intelligentSymbolSuggestions, id: \.self) { thisSymbol in
+                        symbolButton(for: thisSymbol)
+                    }
+                }
+                .padding(.horizontal)
+            }
+
             if searchText.isEmpty {
                 // Combine suggested and common, preserving order and removing duplicates
                 let featured: [String] = {
@@ -252,77 +351,137 @@ public struct SymbolPicker: View {
 
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.gridDimension, maximum: Self.gridDimension))]) {
                         ForEach(featured, id: \.self) { thisSymbol in
-                            Button {
-                                symbol = thisSymbol
-                                presentationMode.wrappedValue.dismiss()
-                            } label: {
-                                if thisSymbol == symbol {
-                                    Image.systemHierarchical(thisSymbol)
-                                        .font(.system(size: Self.symbolSize))
-                                    #if os(tvOS)
-                                        .frame(minWidth: Self.gridDimension, minHeight: Self.gridDimension)
-                                    #else
-                                        .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
-                                    #endif
-                                        .background(Self.selectedItemBackgroundColor)
-                                        .cornerRadius(Self.symbolCornerRadius)
-                                        .foregroundColor(.white)
-                                } else {
-                                    Image.systemHierarchical(thisSymbol)
-                                        .font(.system(size: Self.symbolSize))
-                                        .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
-                                        .background(Self.unselectedItemBackgroundColor)
-                                        .cornerRadius(Self.symbolCornerRadius)
-                                        .foregroundColor(.primary)
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            #if os(iOS)
-                                .hoverEffect(.lift)
-                            #endif
+                            symbolButton(for: thisSymbol)
                         }
                     }
                     .padding(.horizontal)
                 }
             }
+
             Text("All Symbols")
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .foregroundColor(.secondary)
                 .padding(.leading)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.gridDimension, maximum: Self.gridDimension))]) {
                 ForEach(Self.symbols.filter { searchText.isEmpty ? true : $0.localizedCaseInsensitiveContains(searchText) }, id: \.self) { thisSymbol in
-                    Button {
-                        symbol = thisSymbol
-                        presentationMode.wrappedValue.dismiss()
-                    } label: {
-                        if thisSymbol == symbol {
-                            Image.systemHierarchical(thisSymbol)
-                                .font(.system(size: Self.symbolSize))
-                            #if os(tvOS)
-                                .frame(minWidth: Self.gridDimension, minHeight: Self.gridDimension)
-                            #else
-                                .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
-                            #endif
-                                .background(Self.selectedItemBackgroundColor)
-                                .cornerRadius(Self.symbolCornerRadius)
-                                .foregroundColor(.white)
-                        } else {
-                            Image.systemHierarchical(thisSymbol)
-                                .font(.system(size: Self.symbolSize))
-                                .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
-                                .background(Self.unselectedItemBackgroundColor)
-                                .cornerRadius(Self.symbolCornerRadius)
-                                .foregroundColor(.primary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    #if os(iOS)
-                        .hoverEffect(.lift)
-                    #endif
+                    symbolButton(for: thisSymbol)
                 }
             }
             .padding(.horizontal)
         }
+        .onChange(of: searchText) { newValue in
+            if enableIntelligentSuggestions && !newValue.isEmpty {
+                Task {
+                    intelligentSymbolSuggestions = await IntelligentSuggestions.shared.suggestSymbols(for: newValue)
+                }
+            } else {
+                intelligentSymbolSuggestions = []
+            }
+        }
+    }
+
+    private func symbolButton(for thisSymbol: String) -> some View {
+        Button {
+            symbol = thisSymbol
+            presentationMode.wrappedValue.dismiss()
+        } label: {
+            if thisSymbol == symbol {
+                Image.systemHierarchical(thisSymbol)
+                    .font(.system(size: Self.symbolSize))
+                #if os(tvOS)
+                    .frame(minWidth: Self.gridDimension, minHeight: Self.gridDimension)
+                #else
+                    .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
+                #endif
+                    .background(Self.selectedItemBackgroundColor)
+                    .cornerRadius(Self.symbolCornerRadius)
+                    .foregroundColor(.white)
+            } else {
+                Image.systemHierarchical(thisSymbol)
+                    .font(.system(size: Self.symbolSize))
+                    .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
+                    .background(Self.unselectedItemBackgroundColor)
+                    .cornerRadius(Self.symbolCornerRadius)
+                    .foregroundColor(.primary)
+            }
+        }
+        .buttonStyle(.plain)
+        #if os(iOS)
+            .hoverEffect(.lift)
+        #endif
+    }
+
+    private var emojiGrid: some View {
+        ScrollView {
+            // Intelligent suggestions from AI (if enabled and search is active)
+            if enableIntelligentSuggestions && !searchText.isEmpty && !intelligentEmojiSuggestions.isEmpty {
+                Text("AI Suggestions")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundColor(.secondary)
+                    .padding(.leading)
+                    .font(.headline)
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.gridDimension, maximum: Self.gridDimension))]) {
+                    ForEach(intelligentEmojiSuggestions, id: \.self) { emoji in
+                        emojiButton(for: emoji)
+                    }
+                }
+                .padding(.horizontal)
+            }
+
+            // Display emoji by category
+            let categories = Symbols.shared.emojiCategories
+            let filteredCategories = searchText.isEmpty ? categories : categories.map { category in
+                EmojiCategory(
+                    name: category.name,
+                    emoji: category.emoji.filter { $0.localizedCaseInsensitiveContains(searchText) || category.name.localizedCaseInsensitiveContains(searchText) }
+                )
+            }.filter { !$0.emoji.isEmpty }
+
+            ForEach(filteredCategories.indices, id: \.self) { index in
+                let category = filteredCategories[index]
+                if !category.emoji.isEmpty {
+                    Text(category.name)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .foregroundColor(.secondary)
+                        .padding(.leading)
+                        .font(.headline)
+
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.gridDimension, maximum: Self.gridDimension))]) {
+                        ForEach(category.emoji, id: \.self) { emoji in
+                            emojiButton(for: emoji)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+        }
+        .onChange(of: searchText) { newValue in
+            if enableIntelligentSuggestions && !newValue.isEmpty {
+                Task {
+                    intelligentEmojiSuggestions = await IntelligentSuggestions.shared.suggestEmoji(for: newValue)
+                }
+            } else {
+                intelligentEmojiSuggestions = []
+            }
+        }
+    }
+
+    private func emojiButton(for emoji: String) -> some View {
+        Button {
+            symbol = emoji
+            presentationMode.wrappedValue.dismiss()
+        } label: {
+            Text(emoji)
+                .font(.system(size: Self.symbolSize * 1.2))
+                .frame(maxWidth: .infinity, minHeight: Self.gridDimension)
+                .background(emoji == symbol ? Self.selectedItemBackgroundColor : Self.unselectedItemBackgroundColor)
+                .cornerRadius(Self.symbolCornerRadius)
+        }
+        .buttonStyle(.plain)
+        #if os(iOS)
+            .hoverEffect(.lift)
+        #endif
     }
 
     public var body: some View {
