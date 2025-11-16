@@ -12,7 +12,7 @@ SymbolPicker provides a simple and cross-platform interface for picking SFSymbol
 ### Key Features
 
 - **5,800+ SF Symbols** with platform-aware loading (iOS 14-26+)
-- **1,000+ Emoji** organized in 10 categories
+- **1,600+ Emoji** organized in 10 categories (includes Unicode 14-15)
 - **AI-Powered Suggestions** using Apple Intelligence (iOS 26+) with keyword-based fallback
 - **Intelligent Search** across symbols, emoji, and categories
 - **Cross-Platform** support for iOS, macOS, tvOS, and watchOS
@@ -132,7 +132,7 @@ SymbolPicker(
 
 ## New in Version 2.0
 
-- [x] **Emoji Picker** - 1,000+ emoji organized in 10 categories
+- [x] **Emoji Picker** - 1,600+ emoji organized in 10 categories
 - [x] **AI-Powered Suggestions** - Apple Intelligence integration (iOS 26+) with keyword fallback
 - [x] **Enhanced UX** - Segmented control, category organization, better visual hierarchy
 - [x] **Intelligent Search** - Real-time suggestions across symbols and emoji

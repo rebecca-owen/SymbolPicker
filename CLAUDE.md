@@ -24,7 +24,8 @@ SymbolPicker has been extended from a simple SFSymbol picker to a comprehensive 
 
 The emoji picker features:
 - **10 curated categories**: Smileys & People, Gestures & Body, People & Roles, Animals & Nature, Food & Drink, Travel & Places, Activities & Sports, Objects & Tools, Symbols & Signs, and Flags
-- **1000+ emoji** organized by category for easy browsing
+- **1,673 emoji** organized by category for easy browsing (includes Unicode 14-15)
+- **Comprehensive coverage** of popular and recent emoji (~45% of Unicode standard)
 - **Category-based filtering** - Search works across both emoji and category names
 - **Unified interface** - Seamlessly integrated with symbol picker via segmented control
 
@@ -276,7 +277,7 @@ UI Display (Grid View)
 ### Memory Usage
 
 - **Symbols**: ~5,867 strings × ~30 bytes ≈ 175 KB
-- **Emoji**: ~1,000 strings × ~10 bytes ≈ 10 KB
+- **Emoji**: ~1,673 strings × ~10 bytes ≈ 17 KB
 - **Total data footprint**: < 200 KB
 
 ## Platform Support
